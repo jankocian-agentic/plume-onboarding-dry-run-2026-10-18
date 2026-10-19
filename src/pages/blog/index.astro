@@ -1,15 +1,18 @@
 ---
 import { Image } from 'astro:assets';
-import { getCollection } from 'astro:content';
+import { plumeItem } from '@plume-press/sdk';
+import { getBlogPosts } from '../../lib/blog';
+import { createContentReader, renderEvidence } from '../../lib/plume';
 import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import Header from '../../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
 
-const posts = (await getCollection('blog')).sort(
-	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
-);
+const reader = createContentReader();
+const posts = await getBlogPosts(reader);
+const evidence = renderEvidence(reader);
+if (evidence) Astro.response.headers.set('X-Plume-Render', evidence);
 ---
 
 <!doctype html>
@@ -92,14 +95,16 @@ const posts = (await getCollection('blog')).sort(
 			<section>
 				<ul>
 					{posts.map((post) => (
-						<li>
-							<a href={`/blog/${post.id}/`}>
-								{post.data.heroImage && (
-									<Image width={720} height={360} src={post.data.heroImage} alt="" />
+						<li {...plumeItem('blog', post.id)}>
+							<a href={`/blog/${post.slug}/`}>
+								{post.heroImage && (
+									typeof post.heroImage === 'string'
+										? <img width={720} height={360} src={post.heroImage} alt={post.heroAlt} />
+										: <Image width={720} height={360} src={post.heroImage} alt={post.heroAlt} />
 								)}
-								<h4 class="title">{post.data.title}</h4>
+								<h4 class="title">{post.title}</h4>
 								<p class="date">
-									<FormattedDate date={post.data.pubDate} />
+									<FormattedDate date={post.pubDate} />
 								</p>
 							</a>
 						</li>
