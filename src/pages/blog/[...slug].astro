@@ -1,20 +1,27 @@
 ---
-import { type CollectionEntry, getCollection, render } from 'astro:content';
 import BlogPost from '../../layouts/BlogPost.astro';
+import { getBlogPosts, renderPostText, type BlogPost as Post } from '../../lib/blog';
+import { createContentReader, renderEvidence } from '../../lib/plume';
 
 export async function getStaticPaths() {
-	const posts = await getCollection('blog');
+	const reader = createContentReader();
+	const posts = await getBlogPosts(reader);
+	const evidence = renderEvidence(reader);
 	return posts.map((post) => ({
-		params: { slug: post.id },
-		props: post,
+		params: { slug: post.slug },
+		props: { post, evidence },
 	}));
 }
-type Props = CollectionEntry<'blog'>;
 
-const post = Astro.props;
-const { Content } = await render(post);
+interface Props {
+	post: Post;
+	evidence: string | null;
+}
+
+const { post, evidence } = Astro.props;
+if (evidence) Astro.response.headers.set('X-Plume-Render', evidence);
 ---
 
-<BlogPost {...post.data}>
-	<Content />
+<BlogPost {...post} itemId={post.id}>
+	<div set:html={renderPostText(post.body)} />
 </BlogPost>
